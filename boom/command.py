@@ -52,6 +52,8 @@ _log_error = _log.error
 _default_log_level = logging.WARNING
 _console_handler = None
 
+_bootloader_checked = False
+
 #
 # Reporting object types
 #
@@ -904,6 +906,16 @@ def _apply_profile_overrides(boot_entry, cmd_args):
     if cmd_args.initrd:
         boot_entry.initrd = cmd_args.initrd
 
+
+def _bootloader_check(force=False):
+    global _bootloader_checked
+    if not _bootloader_checked and not force:
+        if not check_bootloader():
+            _log_warn("Boom configuration not found in grub.cfg")
+            _log_warn("Run 'grub2-mkconfig > /boot/grub2/grub.cfg' to enable")
+            return
+        _bootloader_checked = True
+
 def _create_cmd(cmd_args, select, opts, identifier):
     """Create entry command handler.
 
@@ -915,10 +927,7 @@ def _create_cmd(cmd_args, select, opts, identifier):
         :param select: Unused
         :returns: integer status code returned from ``main()``
     """
-    if not check_bootloader():
-        _log_warn("Boom configuration not found in grub.cfg")
-        _log_warn("Run 'grub2-mkconfig > /boot/grub2/grub.cfg' to enable")
-
+    _bootloader_check()
     if identifier is not None:
         print("entry create does not accept <identifier>")
         return 1
@@ -1633,6 +1642,9 @@ def main(args):
                         help="The path or ID of a BTRFS subvolume")
     parser.add_argument("--btrfs-opts", "--btrfsopts", metavar="OPTS", type=str,
                         help="A template option string for BTRFS devices")
+    parser.add_argument("--check-bootloader", action="store_true",
+                        help="Check for boom integration in the active "
+                        "bootloader configuration")
     parser.add_argument("--debug", metavar="DEBUGOPTS", type=str,
                         help="A list of debug options to enable")
     parser.add_argument("-e", "--efi", metavar="IMG", type=str,
@@ -1705,6 +1717,11 @@ def main(args):
 
     set_debug(cmd_args.debug)
     setup_logging(cmd_args)
+
+    if cmd_args.check_bootloader:
+        _bootloader_check()
+        return 0
+
     cmd_type = _match_cmd_type(cmd_args.type)
 
     if cmd_args.boot_dir or BOOM_BOOT_PATH_ENV in environ:

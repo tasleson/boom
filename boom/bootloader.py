@@ -190,7 +190,7 @@ def check_bootloader():
                 _log_info("Found Boom Grub2 integration in '%s'" % grub_cfg)
                 found_boom_grub = True
 
-    return found_boom_grub or found_bls
+    return found_bls
 
 
 class BoomRootDeviceError(BoomError):
