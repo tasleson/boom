@@ -42,6 +42,7 @@ from __future__ import print_function
 from boom import *
 from boom.osprofile import *
 from boom.hostprofile import find_host_profiles
+from boom.grub2 import grub2_get_env
 
 from os.path import basename, exists as path_exists, join as path_join
 from tempfile import mkstemp
@@ -1807,6 +1808,21 @@ class BootEntry(object):
             :setter: sets the command line for this ``BootEntry``.
             :type: string
         """
+        def expand_opts(opts):
+            """Expand a ``BootEntry`` option string that may contain
+                references to Grub2 environment variables using shell
+                style ``$value`` notation.
+            """
+            var_char = '$'
+            if var_char not in opts:
+                return opts
+
+            for opt in opts.split():
+                if opt.startswith("$"):
+                    env_name = opt[1:]
+                    opts = opts.replace(opt, grub2_get_env(env_name))
+            return opts
+
         def add_opts(opts, append):
             """Append additional kernel options to this ``BootEntry``'s
                 options property.
@@ -1847,13 +1863,13 @@ class BootEntry(object):
             opts = self._entry_data_property(BOOM_ENTRY_OPTIONS)
             if self.bp:
                 opts = add_opts(opts, self.bp.add_opts)
-                return del_opts(opts, self.bp.del_opts)
-            return opts
+                return expand_opts(del_opts(opts, self.bp.del_opts))
+            return expand_opts(opts)
 
         if self._osp and self.bp:
             opts = self._apply_format(self._osp.options)
             opts = add_opts(opts, self.bp.add_opts)
-            return del_opts(opts, self.bp.del_opts)
+            return expand_opts(del_opts(opts, self.bp.del_opts))
 
         return ""
 
