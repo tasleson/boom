@@ -891,6 +891,22 @@ def _grub2_get_env(name):
     return ""
 
 
+def _expand_opts(opts):
+    """Expand a ``BootEntry`` option string that may contain
+        references to Grub2 environment variables using shell
+        style ``$value`` notation.
+    """
+    var_char = '$'
+    if var_char not in opts:
+        return opts
+
+    for opt in opts.split():
+        if opt.startswith("$"):
+            env_name = opt[1:]
+            opts = opts.replace(opt, _grub2_get_env(env_name))
+    return opts
+
+
 class BootEntry(object):
     """A class representing a BLS compliant boot entry.
 
@@ -1836,25 +1852,13 @@ class BootEntry(object):
     def options(self):
         """The command line options for this ``BootEntry``.
 
+            Return the command line options for this ``BootEntry``,
+            expanding any Boom or Grub2 substitution notation found.
+
             :getter: returns the command line for this ``BootEntry``.
             :setter: sets the command line for this ``BootEntry``.
             :type: string
         """
-        def expand_opts(opts):
-            """Expand a ``BootEntry`` option string that may contain
-                references to Grub2 environment variables using shell
-                style ``$value`` notation.
-            """
-            var_char = '$'
-            if var_char not in opts:
-                return opts
-
-            for opt in opts.split():
-                if opt.startswith("$"):
-                    env_name = opt[1:]
-                    opts = opts.replace(opt, grub2_get_env(env_name))
-            return opts
-
         def add_opts(opts, append):
             """Append additional kernel options to this ``BootEntry``'s
                 options property.
@@ -1895,13 +1899,13 @@ class BootEntry(object):
             opts = self._entry_data_property(BOOM_ENTRY_OPTIONS)
             if self.bp:
                 opts = add_opts(opts, self.bp.add_opts)
-                return expand_opts(del_opts(opts, self.bp.del_opts))
-            return expand_opts(opts)
+                return _expand_opts(del_opts(opts, self.bp.del_opts))
+            return _expand_opts(opts)
 
         if self._osp and self.bp:
             opts = self._apply_format(self._osp.options)
             opts = add_opts(opts, self.bp.add_opts)
-            return expand_opts(del_opts(opts, self.bp.del_opts))
+            return _expand_opts(del_opts(opts, self.bp.del_opts))
 
         return ""
 
