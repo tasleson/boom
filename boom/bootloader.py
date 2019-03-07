@@ -615,7 +615,10 @@ class BootParams(object):
             """Return ``True`` if ``opt`` was appended to this options line,
                 and was not generated from an ``OsProfile`` template.
             """
-            return opt not in matches.keys()
+            if opt not in matches.keys():
+                if opt not in _expand_opts(be.options_template):
+                    return True
+            return False
 
         def is_del(opt):
             """Return ``True`` if the option regex `opt` has been deleted
@@ -1913,6 +1916,22 @@ class BootEntry(object):
     def options(self, options):
         self._entry_data[BOOM_ENTRY_OPTIONS] = options
         self._dirty()
+
+    @property
+    def options_template(self):
+        if BOOM_ENTRY_OPTIONS in self._entry_data:
+            opts = self._entry_data_property(BOOM_ENTRY_OPTIONS)
+            if self.bp:
+                opts = del_opts(add_opts(opts, self.bp.add_opts),
+                                self.bp.del_opts)
+            return opts
+
+        if self._osp and self.bp:
+            opts = self._osp.options
+            opts = add_opts(opts, self.bp.add_opts)
+            return _expand_opts(del_opts(opts, self.bp.del_opts))
+
+        return self._osp.options
 
     @property
     def linux(self):
