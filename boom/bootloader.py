@@ -42,9 +42,9 @@ from __future__ import print_function
 from boom import *
 from boom.osprofile import *
 from boom.hostprofile import find_host_profiles
-from boom.grub2 import grub2_get_env
 
 from os.path import basename, exists as path_exists, join as path_join
+from subprocess import Popen, PIPE
 from tempfile import mkstemp
 from os import listdir, rename, fdopen, chmod, unlink, fdatasync, stat, dup
 from stat import S_ISBLK
@@ -866,6 +866,29 @@ def _transform_key(key_name):
     if "-" in key_name:
         return key_name.replace("-", "_")
     return key_name
+
+
+def _grub2_get_env(name):
+    """Return the value of the Grub2 environment variable with name
+        ``name`` as a string.
+
+        :param name: The name of the environment variable to return.
+        :returns: The value of the named environment variable.
+        :returntype: string
+    """
+    grub_cmd = ["grub2-editenv", "list"]
+    try:
+        p = Popen(grub_cmd, stdin=None, stdout=PIPE, stderr=PIPE)
+        out = p.communicate()[0]
+    except OSError as e:
+        _log_error("Could not obtain grub2 environment: %s" % e)
+        return ""
+
+    for line in out.splitlines():
+        (env_name, value) = line.split('=', 1)
+        if name == env_name:
+            return value
+    return ""
 
 
 class BootEntry(object):
