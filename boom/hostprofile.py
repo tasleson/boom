@@ -721,15 +721,6 @@ class HostProfile(BoomProfile):
         return self.osp.disp_os_id
 
     @property
-    def os_id(self):
-        """The ``os_id`` of this profile.
-
-            :getter: returns the ``os_id`` as a string.
-            :type: string
-        """
-        return self.osp.os_id
-
-    @property
     def host_id(self):
         if BOOM_HOST_ID not in self._profile_data:
             self._generate_id()
